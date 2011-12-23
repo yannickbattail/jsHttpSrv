@@ -1,0 +1,47 @@
+{
+    "1324470365000": {
+        "dist": 260,
+        "liters": 42,
+        "price": 1.7,
+        "isCHF": true,
+        "rate": 1.2228,
+        "timeStamp": 1324470365000,
+        "date": "Thu Dec 22 2011 17:18:26 GMT+0100 (CET)"
+    },
+    "1324570705000": {
+        "dist": 540,
+        "liters": 21,
+        "price": 1.7,
+        "isCHF": true,
+        "rate": 1.2228,
+        "timeStamp": 1324570705000,
+        "date": "Thu Dec 22 2011 17:18:26 GMT+0100 (CET)"
+    },
+    "1324671854000": {
+        "dist": 1024,
+        "liters": 43,
+        "price": 1.5,
+        "isCHF": false,
+        "rate": 1.2228,
+        "timeStamp": 1324671854000,
+        "date": "Thu Dec 22 2011 17:20:55 GMT+0100 (CET)"
+    },
+    "1324872884000": {
+        "dist": 1670,
+        "liters": 44,
+        "price": 1.5,
+        "isCHF": false,
+        "rate": 1.2228,
+        "timeStamp": 1324872884000,
+        "date": "Thu Dec 22 2011 17:20:55 GMT+0100 (CET)"
+    },
+    "1325079884000": {
+        "dist": 2342,
+        "liters": 40,
+        "price": 1.72,
+        "isCHF": true,
+        "rate": 1.2236,
+        "timeStamp": 1325079884000,
+        "date": "Fri Dec 23 2011 13:20:20 GMT+0100 (CET)"
+    }
+}

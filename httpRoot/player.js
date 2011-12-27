@@ -27,36 +27,23 @@ try {
             http.sessions[id] = null;
         }
     }
-    //print("Session:" + uuid + ", " + session['last_use_date']);
+    print("Session:" + uuid + ", " + session['last_use_date']);
     /** *** end session managment ***** */
 
     var droid = new Android();
 
-    if (!session.player) {
-        session.player = {
-            'current' : '',
-            'playlist' : {}
-        };
-    }
-    // var mediaList = droid.mediaPlayList();
-    // if (mediaList.length == 0) {
-    var mediaDir = "/sdcard/Music/reflet-d-acide/bonus/";
-    var file = new File(mediaDir);
-    var fileList = file.listFiles();
-    for ( var fIndex in fileList) {
-        var curFile = fileList[fIndex];
-        if (curFile.isFile()) {
-            var path = "" + curFile.getAbsolutePath();
-            if (!session.player.playlist[path]) {
-                session.player.playlist[path] = {
-                    path : path,
-                    size : curFile.length(),
-                    isPlaying : false
-                };
+    var mediaList = droid.mediaPlayList();
+    if (mediaList.length == 0) {
+        var mediaDir = "/sdcard/Music/reflet-d-acide/bonus/";
+        var file = new File(mediaDir);
+        var fileList = file.listFiles();
+        for ( var fIndex in fileList) {
+            var curFile = fileList[fIndex];
+            if (curFile.isFile()) {
+                droid.mediaPlay("file://" + curFile.getAbsolutePath(), "" + curFile.getName(), false);
             }
         }
     }
-    // }
 
     var medias = {};
     var mediaPlayed = "";
@@ -135,11 +122,15 @@ try {
         print("Seek: " + p + " => " + ret);
     }
     if (http.request.vars.action == 'prev') {
+        droid.mediaPlayPause(session.currentMedia);
+        droid.mediaPlayPause(mediaPlayed); 
         var p = getPrevMedia(medias, session.currentMedia);
         var ret = droid.mediaPlayStart(p);
         print("Seek: " + p + " => " + ret);
     }
     if (http.request.vars.action == 'next') {
+        droid.mediaPlayPause(session.currentMedia);
+        droid.mediaPlayPause(mediaPlayed); 
         var p = getNextMedia(medias, session.currentMedia);
         var ret = droid.mediaPlayStart(p);
         print("Seek: " + p + " => " + ret);
@@ -154,7 +145,7 @@ try {
     }
 
     http.addHeader("Content-Type", "text/html");
-    http.print('<html><head>');
+    http.print('<html><head> <link rel="stylesheet" type="text/css" href="conso.css" /> ');
     http.print('  <title>Audio player</title>');
     http.print('  <style type="text/css">');
     http.print('    .isplaying { background-color: #99ff99; font-weight:bold;}');
@@ -186,10 +177,10 @@ try {
         http.print('</tr>');
     }
     http.print('</table>');
-
+    
     var evTab = droid.eventPoll(1024);
     for ( var ev in evTab) {
-        http.print(ev.name + ': ' + ev.data);
+        http.print(ev.name+ ': '+ev.data);
     }
     http.print('</body></html>');
 

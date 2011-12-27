@@ -1,6 +1,6 @@
-//load("/sdcard/com.googlecode.rhinoforandroid/extras/rhino/json2.js");
+load("/sdcard/com.googlecode.rhinoforandroid/extras/rhino/json2.js");
 
-http.addHeader("Content-Type", "text/html");
+http.addHeader("Content-Type", "text/html ; charset=UTF-8");
 http.print('<html><head><title>conso</title><link rel="stylesheet" type="text/css" href="conso.css" /></head><body>');
 function loadTable() {
     var jsonStr = "";
@@ -24,8 +24,10 @@ function loadTable() {
 
 function saveTable(table) {
     try {
+        var jsonStr = '' + JSON.stringify(table, null, 4);
+        http.print(jsonStr);
         var dos = new DataOutputStream(new FileOutputStream('./conso.json'));
-        dos.writeBytes('' + JSON.stringify(table, null, 4));
+        dos.writeBytes(jsonStr);
         dos.flush();
         dos.close();
         // http.print('<br />saved: '+JSON.stringify(table));
@@ -43,7 +45,7 @@ function myRound00(val) {
     return myRound(val, 100);
 }
 
-function saveFormInfo() {
+function saveFormInfo(tableConso) {
     var _GET = http.request.vars;
     if (_GET["go"] == 'go') {
         var timeStamp = new Date().getTime();
@@ -178,8 +180,8 @@ for ( var v in tableConso) {
     current.calc(raw, prev);
     if (i > 0) {
         avg.addAvg(current);
-        current.print();
     }
+    current.print();
     prev = current;
     i++;
 }

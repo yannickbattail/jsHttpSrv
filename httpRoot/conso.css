@@ -33,3 +33,14 @@ table:hover {
 body {
 	background-color: #e0e0ff;
 }
+
+
+ .isnotplaying {
+     background-color: #dddddd;
+     font-style:italic;
+ }
+ 
+ .isplaying {
+     background-color: #99ff99;
+     font-weight:bold;
+ } 

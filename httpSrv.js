@@ -133,9 +133,8 @@ function httpParser(sock) {
             print(e.message + "\r\n in file " + e.sourceName + " at line " + e.lineNumber + "\r\n" + e.lineSource);
             this.response.code = "500";
             this.response.message = "Internal Server Error";
-            var message = "Internal Server Error\n";
-            message += e.message + "\r\n in file " + e.sourceName + " at line " + e.lineNumber + "\r\n" + e.lineSource;
-            this.response.body = new ByteArrayInputStream(new java.lang.String(message).getBytes('UTF-8'));
+            this.response.text = "Internal Server Error\n";
+            this.response.text += e.message + "\r\n in file " + e.sourceName + " at line " + e.lineNumber + "\r\n" + e.lineSource;
         }
 
         print(this.response.code + " " + this.response.message + " " + this.request.url);
@@ -205,8 +204,9 @@ function httpParser(sock) {
 
     function sendResponse(response, outStream) {
         if (response.body == null) {
-            response.body = new ByteArrayInputStream(new java.lang.String(response.text).getBytes('UTF-8'));
-            response.headers["Content-Length"] = response.text.length;
+            var arr = new java.lang.String(response.text).getBytes('UTF-8');
+            response.body = new ByteArrayInputStream(arr);
+            response.headers["Content-Length"] = arr.length;
         }
         outStream.writeBytes(response.protocol + " " + response.code + " " + response.message + "\r\n");
         for ( var headerName in response.headers) {

@@ -1,193 +1,295 @@
 importPackage(java.io);
 
 try {
-    load("/sdcard/com.googlecode.rhinoforandroid/extras/rhino/android.js");
-
-    /** *** session managment ***** */
-    var session = {};
+  
+  function initSession() {
     var uuid = '';
     if (!http.request.headers["Cookie"]) {
-        importPackage(java.util);
-        uuid = "" + UUID.randomUUID().toString();
-        http.response.headers["Set-Cookie"] = "js_session_cookie=" + uuid;
+      importPackage(java.util);
+      uuid = "" + UUID.randomUUID().toString();
+      http.response.headers["Set-Cookie"] = "js_session_cookie=" + uuid;
     } else {
-        uuid = http.request.headers["Cookie"];
-        uuid.replace('js_session_cookie=', '');
+      uuid = http.request.headers["Cookie"];
+      uuid.replace('js_session_cookie=', '');
     }
     if (!http.sessions[uuid]) {
-        http.sessions[uuid] = {};
+      http.sessions[uuid] = {};
     }
     session = http.sessions[uuid];
     // time of the last use of the session
     session['last_use_date'] = new Date().getTime(); // unix timestamp in milisec
-
+    
     // clean out of date sessions
     for ( var id in http.sessions) {
-        if (http.sessions[id]['last_use_date'] < (new Date().getTime() - (10 * 60 * 1000))) { // ms = min*60*1000
-            http.sessions[id] = null;
-        }
+      if (http.sessions[id]['last_use_date'] < (new Date().getTime() - (10 * 60 * 1000))) { // ms = min*60*1000
+        http.sessions[id] = null;
+      }
     }
-    print("Session:" + uuid + ", " + session['last_use_date']);
-    /** *** end session managment ***** */
-
-    var droid = new Android();
-
-    var mediaList = droid.mediaPlayList();
-    if (mediaList.length == 0) {
-        var mediaDir = "/sdcard/Music/reflet-d-acide/bonus/";
-        var file = new File(mediaDir);
-        var fileList = file.listFiles();
-        for ( var fIndex in fileList) {
-            var curFile = fileList[fIndex];
-            if (curFile.isFile()) {
-                droid.mediaPlay("file://" + curFile.getAbsolutePath(), "" + curFile.getName(), false);
-            }
-        }
+    // print("Session:" + uuid + ", " + session['last_use_date']);
+    return session;
+  }
+  
+  function escapeHtml(string) {
+    return String(string).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  }
+  
+  function getMediaIndex(medias, media) {
+    for ( var k in medias) {
+      if (medias[k].url == media) {
+        return k;
+      }
     }
-
-    var medias = {};
-    var mediaPlayed = "";
-
-    for ( var k in mediaList) {
-        var mediaTag = mediaList[k];
-        medias[mediaTag] = droid.mediaPlayInfo(mediaTag);
-        if (medias[mediaTag].isplaying) {
-            mediaPlayed = mediaTag;
-        }
+    return null;
+  }
+  
+  function pauseAll(stop) {
+    var playList = droid.mediaPlayList();
+    for ( var k in playList) {
+      var tag = playList[k];
+      droid.mediaPlayPause(tag);
+      if (stop) {
+        droid.mediaPlayClose(tag);
+      }
     }
-
-    function getFirstMedia(medias) {
-        for ( var k in medias) {
-            return k;
-        }
+  }
+  
+  function isPlaying() {
+    var playList = droid.mediaPlayList();
+    for ( var k in playList) {
+      var tag = playList[k];
+      var mediaInfo = droid.mediaPlayInfo(tag);
+      if (mediaInfo.isplaying) {
+        return true;
+      }
     }
-
-    function getPrevMedia(medias, currentMedia) {
-        var prev = "";
-        for ( var k in medias) {
-            if (k == currentMedia) {
-                return prev;
-            }
-            prev = k;
-        }
+  }
+  
+  function printList(medias) {
+    http.print('<table id="playlist">');
+    http.print('<tr><td>play</td><td>tag</td><td>url</td><td>duration</td><td>position</td><td>loaded</td><td>looping</td></tr>');
+    /*
+     * for ( var k in session.medias) { var mi = session.medias[k]; http.print('<tr class="' + ((mi.isplaying) ? 'isplaying' : 'isnotplaying') + '">'); http.print(' <td><a
+     * href="player.js?action=play&media=' + k + '"><img src="images/media-playback-start.png"/></a></td>'); http.print(' <td>' + k + '</td>'); http.print(' <td>' + ((mi.url) ? mi.url : '') + '</td>');
+     * http.print(' <td>' + ((mi.duration) ? Math.round(mi.duration / 1000) : '') + '</td>'); http.print(' <td>' + ((mi.position) ? Math.round(mi.position / 1000) : '') + '</td>'); http.print('
+     * <td>' + ((mi.loaded) ? mi.loaded : '') + '</td>'); http.print(' <td>' + ((mi.looping) ? mi.looping : '') + '</td>'); http.print('</tr>'); }
+     */
+    http.print('</table>');
+  }
+  
+  function fileBrowser() {
+    if (!session.currentDir) {
+      session.currentDir = "./";
     }
-
-    function getNextMedia(medias, currentMedia) {
-        var found = false;
-        for ( var k in medias) {
-            if (found) {
-                return k;
-            }
-            if (k == currentMedia) {
-                found = true;
-            }
-        }
+    http.print('<table id="fileBrowser">');
+    http.print('</table>');
+    http.print('<script type="text/javascript">');
+    http.print(readFile('/sdcard/sl4a/scripts/httpSrv/httpRoot/fileBrowser.js'));
+    http.print('</script>');
+  }
+  
+  function manageActions(session) {
+    var mapAction = {
+      'addMedia' : actionAddMedia,
+      'delMedia' : actionDelMedia,
+      'play' : actionPlay,
+      'pause' : actionPause,
+      'bwd' : actionBwd,
+      'fwd' : actionFwd,
+      'prev' : actionPrev,
+      'next' : actionNext,
+      'getPlayList' : actionGetPlayList
+    };
+    
+    if (mapAction[http.request.vars.action]) {
+      var fct = mapAction[http.request.vars.action];
+      fct.call(fct, session);
+    } else {
+      print('unknown action ' + http.request.vars.action);
     }
-
-    if (!session.currentMedia) {
-        if (mediaPlayed != "") {
-            session.currentMedia = mediaPlayed;
+  }
+  
+  function actionAddMedia(session) {
+    if (http.request.vars.media != '') {
+      var fileInfo = libUtil.file.getFileInfo('/sdcard/sl4a/' + http.request.vars.media);
+      if (fileInfo && fileInfo.isFile) {
+        // print('add file: '+'' + JSON.stringify(fileInfo, null, 4));
+        var url = 'file://' + fileInfo.absolutePath;
+        if (getMediaIndex(session.medias, url) == null) {
+          var ret = droid.mediaPlay(url, url, false);
+          if (ret) {
+            var mediaInfo = droid.mediaPlayInfo(url);
+            session.medias.push({
+              'url' : url,
+              'duration' : mediaInfo.duration,
+              'size' : fileInfo.size,
+              'position' : mediaInfo.position,
+              'loaded' : mediaInfo.loaded,
+              'looping' : mediaInfo.looping,
+              'isplaying' : mediaInfo.isplaying
+            });
+            // droid.mediaPlayClose(url);
+          } else {
+            http.print('audio file not readable: ' + http.request.vars.media);
+          }
         } else {
-            session.currentMedia = getFirstMedia(medias);
+          http.print('file already in playlist: ' + http.request.vars.media);
         }
+      } else {
+        http.print('file not found: ' + http.request.vars.media);
+      }
     }
-
-    // actions managment
-    if (http.request.vars.action == 'play') {
-        if (http.request.vars.media) {
-            droid.mediaPlayPause(session.currentMedia);
-            droid.mediaPlayPause(mediaPlayed);
-            var ret = droid.mediaPlayStart(http.request.vars.media);
-            session.currentMedia = http.request.vars.media;
-            print("playstart: " + http.request.vars.media + " => " + ret);
-        } else {
-            droid.mediaPlayPause(session.currentMedia);
-            droid.mediaPlayPause(mediaPlayed);
-            var ret = droid.mediaPlayStart(session.currentMedia);
-            print("play: " + session.currentMedia + " => " + ret);
-        }
+  }
+  
+  function actionDelMedia(session) {
+    if (http.request.vars.media != '') {
+      session.medias.splice(1 * http.request.vars.media, 1);
     }
-    if (http.request.vars.action == 'pause') {
-        var ret = droid.mediaPlayPause(mediaPlayed);
-        print("pause: " + mediaPlayed + " => " + ret);
+  }
+  
+  function actionPlay(session) {
+    pauseAll(true);
+    if (http.request.vars.media) {
+      if (session.medias[1 * http.request.vars.media]) {
+        session.currentMedia = http.request.vars.media;
+      } else {
+        http.print("no element " + http.request.vars.media + " in playlist.");
+        return;
+      }
     }
-    if (http.request.vars.action == 'bwd') {
-        var p = medias[mediaPlayed].position - (5 * 1000);
-        var ret = droid.mediaPlaySeek(p, mediaPlayed);
-        print("Seek: " + p + " => " + ret);
+    if (!session.medias[session.currentMedia]) {
+      session.currentMedia = 0;
     }
-    if (http.request.vars.action == 'fwd') {
-        var p = medias[mediaPlayed].position + (5 * 1000);
-        var ret = droid.mediaPlaySeek(p, mediaPlayed);
-        print("Seek: " + p + " => " + ret);
+    if (session.medias[session.currentMedia]) {
+      var url = session.medias[session.currentMedia].url;
+      var ret = droid.mediaPlay(url, url);
+      session.play = true;
+      print("playstart: " + http.request.vars.media + " => " + ret);
     }
-    if (http.request.vars.action == 'prev') {
-        droid.mediaPlayPause(session.currentMedia);
-        droid.mediaPlayPause(mediaPlayed); 
-        var p = getPrevMedia(medias, session.currentMedia);
-        var ret = droid.mediaPlayStart(p);
-        print("Seek: " + p + " => " + ret);
+  }
+  
+  function actionPause(session) {
+    pauseAll(false);
+    session.play = false;
+    print("pause");
+  }
+  
+  function actionBwd(session) {
+    var p = session.medias[mediaPlayed].position - (5 * 1000);
+    var ret = droid.mediaPlaySeek(p, mediaPlayed);
+    print("Seek: " + p + " => " + ret);
+  }
+  
+  function actionFwd(session) {
+    var p = session.medias[mediaPlayed].position + (5 * 1000);
+    var ret = droid.mediaPlaySeek(p, mediaPlayed);
+    print("Seek: " + p + " => " + ret);
+  }
+  
+  function actionPrev(session) {
+    pauseAll(true);
+    session.currentMedia--;
+    if (session.currentMedia >= session.medias.length) {
+      session.currentMedia = 0;
+    } else if (session.currentMedia < 0) {
+      session.currentMedia = session.medias.length - 1;
     }
-    if (http.request.vars.action == 'next') {
-        droid.mediaPlayPause(session.currentMedia);
-        droid.mediaPlayPause(mediaPlayed); 
-        var p = getNextMedia(medias, session.currentMedia);
-        var ret = droid.mediaPlayStart(p);
-        print("Seek: " + p + " => " + ret);
+    if (session.medias[session.currentMedia]) {
+      var url = session.medias[session.currentMedia].url;
+      var ret = droid.mediaPlay(url, url);
+      print("playstart: " + http.request.vars.media + " => " + ret);
     }
-
-    for ( var k in mediaList) {
-        var mediaTag = mediaList[k];
-        medias[mediaTag] = droid.mediaPlayInfo(mediaTag);
-        if (medias[mediaTag].isplaying) {
-            mediaPlayed = mediaTag;
-        }
+  }
+  
+  function actionNext(session) {
+    pauseAll(true);
+    session.currentMedia++;
+    if (session.currentMedia >= session.medias.length) {
+      session.currentMedia = 0;
+    } else if (session.currentMedia < 0) {
+      session.currentMedia = session.medias.length - 1;
     }
-
-    http.addHeader("Content-Type", "text/html");
-    http.print('<html><head> <link rel="stylesheet" type="text/css" href="conso.css" /> ');
-    http.print('  <title>Audio player</title>');
-    http.print('  <style type="text/css">');
-    http.print('    .isplaying { background-color: #99ff99; font-weight:bold;}');
-    http.print('    .isnotplaying { background-color: #dddddd; font-style:italic;}');
-    http.print('  </style>');
+    if (session.medias[session.currentMedia]) {
+      var url = session.medias[session.currentMedia].url;
+      var ret = droid.mediaPlay(url, url);
+      print("playstart: " + http.request.vars.media + " => " + ret);
+    }
+  }
+  
+  function actionGetPlayList(session) {
+    if (session.play && !isPlaying()) {
+      actionNext(session);
+    }
+    for ( var k in session.medias) {
+      var media = session.medias[k];
+      var mediaInfo = droid.mediaPlayInfo(media.url);
+      if (mediaInfo) {
+        media.position = mediaInfo.position;
+        media.loaded = mediaInfo.loaded;
+        media.looping = mediaInfo.looping;
+        media.isplaying = mediaInfo.isplaying;
+      } else {
+        media.position = 0;
+        media.loaded = false;
+        media.looping = false;
+        media.isplaying = false;
+      }
+    }
+    http.print('' + JSON.stringify(session.medias, null, 4));
+  }
+  
+  libUtil = {};
+  load("/sdcard/sl4a/scripts/httpSrv/libUtil/file.js");
+  if (libUtil.file.getFileInfo("/sdcard/com.googlecode.rhinoforandroid/extras/rhino/android.js")) {
+    load("/sdcard/com.googlecode.rhinoforandroid/extras/rhino/android.js");
+  } else {
+    load("../libUtil/android.js");
+  }
+  droid = new Android();
+  
+  var session = {};
+  session = initSession();
+  
+  if (!session.medias) {
+    session.medias = [];
+  }
+  if (!session.currentMedia) {
+    session.currentMedia = 0;
+  }
+  if (session.play == undefined) {
+    session.play = false;
+  }
+  manageActions(session);
+  
+  if (!http.request.vars.action) {
+    http.addHeader("Content-Type", "text/html ; charset=UTF-8");
+    http.print('<!DOCTYPE html><html><head>');
+    http.print('<title>Audio player</title>');
+    http.print('<link rel="stylesheet" type="text/css" href="conso.css" />');
     http.print('</head><body>');
     http.print('<h2>Audio player</h2>');
-    http.print('<a href="player.js?action=prev"><img src="images/media-skip-backward.png"/></a>');
-    http.print('<a href="player.js?action=bwd"><img src="images/media-seek-backward.png"/></a>');
-    http.print('<a href="player.js?action=play"><img src="images/media-playback-start.png"/></a>');
-    if (mediaPlayed != "") {
-        http.print('<a href="player.js?action=pause"><img src="images/media-playback-pause.png"/></a>');
-    }
-    http.print('<a href="player.js?action=fwd"><img src="images/media-seek-forward.png"/></a>');
-    http.print('<a href="player.js?action=next"><img src="images/media-skip-forward.png"/></a>');
-    http.print('<table border="1">');
-    http.print('<tr><td>play</td><td>tag</td><td>url</td><td>duration</td><td>position</td><td>loaded</td><td>looping</td></tr>');
-
-    for ( var k in medias) {
-        var mi = medias[k];
-        http.print('<tr class="' + ((mi.isplaying) ? 'isplaying' : 'isnotplaying') + '">');
-        http.print(' <td><a href="player.js?action=play&media=' + k + '"><img src="images/media-playback-start.png"/></a></td>');
-        http.print(' <td>' + k + '</td>');
-        http.print(' <td>' + ((mi.url) ? mi.url : '') + '</td>');
-        http.print(' <td>' + ((mi.duration) ? Math.round(mi.duration / 1000) : '') + '</td>');
-        http.print(' <td>' + ((mi.position) ? Math.round(mi.position / 1000) : '') + '</td>');
-        http.print(' <td>' + ((mi.loaded) ? mi.loaded : '') + '</td>');
-        http.print(' <td>' + ((mi.looping) ? mi.looping : '') + '</td>');
-        http.print('</tr>');
-    }
-    http.print('</table>');
+    http.print('<div id="controls">');
+    http.print('<img src="images/media-skip-backward.png" onclick="doAction(\'prev\', {});" />');
+    http.print('<img src="images/media-seek-backward.png" onclick="doAction(\'bwd\', {});" />');
+    http.print('<img src="images/media-playback-start.png" onclick="doAction(\'play\', {});" />');
+    http.print('<img src="images/media-playback-pause.png" onclick="doAction(\'pause\', {});" />');
+    http.print('<img src="images/media-seek-forward.png" onclick="doAction(\'fwd\', {});" />');
+    http.print('<img src="images/media-skip-forward.png" onclick="doAction(\'next\', {});" />');
+    http.print('</div>');
+    http.print('<br />');
+    printList(session.medias);
     
-    var evTab = droid.eventPoll(1024);
-    for ( var ev in evTab) {
-        http.print(ev.name+ ': '+ev.data);
-    }
+    http.print('<br />');
+    http.print('<div id="info">info</div>');
+    http.print('<br />');
+    
+    fileBrowser();
     http.print('</body></html>');
-
+  }
+  
 } catch (e) {
-    print(e.message + "\r\n in file " + e.sourceName + " at line " + e.lineNumber + "\r\n" + e.lineSource);
-    http.response.code = "500";
-    http.response.message = "Internal Server Error";
-    http.print("Internal Server Error\n");
-    http.print(e.message + "\r\n in file " + e.sourceName + " at line " + e.lineNumber + "\r\n" + e.lineSource);
+  print(e.message + "\r\n in file " + e.sourceName + " at line " + e.lineNumber + "\r\n" + e.lineSource);
+  http.response.code = "500";
+  http.response.message = "Internal Server Error";
+  http.print("Internal Server Error\n");
+  http.print(e.message + "\r\n in file " + e.sourceName + " at line " + e.lineNumber + "\r\n" + e.lineSource);
 }

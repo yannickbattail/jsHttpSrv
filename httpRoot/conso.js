@@ -1,20 +1,19 @@
-load("/sdcard/com.googlecode.rhinoforandroid/extras/rhino/json2.js");
+//load("/sdcard/com.googlecode.rhinoforandroid/extras/rhino/json2.js");
+
+
+libUtil = {};
+load("../libUtil/file.js");
 
 http.addHeader("Content-Type", "text/html ; charset=UTF-8");
-http.print('<html><head><title>conso</title><link rel="stylesheet" type="text/css" href="conso.css" /></head><body>');
+http.print('<!DOCTYPE html><html><head><title>conso</title><link rel="stylesheet" type="text/css" href="conso.css" /></head><body>');
 function loadTable() {
-    var jsonStr = "";
     try {
-        var fis = FileInputStream('./conso.json');
-        var buffer = java.lang.reflect.Array.newInstance(java.lang.Byte.TYPE, fis.available());
-        fis.read(buffer, 0, fis.available());
-        jsonStr = "(" + new java.lang.String(buffer) + ")";
-        fis.close();
+        var jsonStr = libUtil.file.readFile('./conso.json');
         if (jsonStr == '') {
             return {};
         }
-        // http.print("jsonStr: "+jsonStr);
-        return eval(jsonStr);
+        //http.print("jsonStr: "+jsonStr);
+        return eval('('+jsonStr+')');
     } catch (e) {
         http.print(e.message + "\r\n in file " + e.sourceName + " at line " + e.lineNumber + "\r\n" + e.lineSource);
         print(e.message + "\r\n in file " + e.sourceName + " at line " + e.lineNumber + "\r\n" + e.lineSource);
@@ -26,11 +25,7 @@ function saveTable(table) {
     try {
         var jsonStr = '' + JSON.stringify(table, null, 4);
         http.print(jsonStr);
-        var dos = new DataOutputStream(new FileOutputStream('./conso.json'));
-        dos.writeBytes(jsonStr);
-        dos.flush();
-        dos.close();
-        // http.print('<br />saved: '+JSON.stringify(table));
+        libUtil.file.writeFile('./conso.json', jsonStr);
     } catch (e) {
         http.print(e.message + "\r\n in file " + e.sourceName + " at line " + e.lineNumber + "\r\n" + e.lineSource);
         print(e.message + "\r\n in file " + e.sourceName + " at line " + e.lineNumber + "\r\n" + e.lineSource);
@@ -203,4 +198,5 @@ http
         .print('    <tr><th>                                     </th><td><input type="submit"   id="go"     name="go"     value="go"                     /> </td></tr>');
 http.print('</table></form>');
 
+http.print(readFile('randomImage.html'));
 http.print('</body></html>');

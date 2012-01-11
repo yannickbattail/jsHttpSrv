@@ -1,111 +1,95 @@
-var base64 = function() {};
+// Simple Base64 encoder/decoder
+// Public Domain
 
-// private property
-base64._keyStr = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=";
-
-// public method for encoding
-base64.encode = function(input) {
-  var output = "";
-  var chr1, chr2, chr3, enc1, enc2, enc3, enc4;
-  var i = 0;
+Base64 = {
   
-  input = this._utf8_encode(input);
-  
-  while (i < input.length) {
-    chr1 = input.charCodeAt(i++);
-    chr2 = input.charCodeAt(i++);
-    chr3 = input.charCodeAt(i++);
+  encode : function(input) {
+    // Converts each character in the input to its Unicode number, then writes
+    // out the Unicode numbers in binary, one after another, into a string.
+    // This string is then split up at every 6th character, these substrings
+    // are then converted back into binary integers and are used to subscript
+    // the "swaps" array.
+    // Since this would create HUGE strings of 1s and 0s, the distinct steps
+    // above are actually interleaved in the code below (ie. the long binary
+    // string, called "input_binary", gets processed while it is still being
+    // created, so that it never gets too big (in fact, it stays under 13
+    // characters long no matter what).
     
-    enc1 = chr1 >> 2;
-    enc2 = ((chr1 & 3) << 4) | (chr2 >> 4);
-    enc3 = ((chr2 & 15) << 2) | (chr3 >> 6);
-    enc4 = chr3 & 63;
-    
-    if (isNaN(chr2)) {
-      enc3 = enc4 = 64;
-    } else if (isNaN(chr3)) {
-      enc4 = 64;
+    // The indices of this array provide the map from numbers to base 64
+    var swaps = [
+        "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z", "a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l",
+        "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "+", "/"
+    ];
+    var input_binary = ""; // The input string, converted to Unicode numbers and written out in binary
+    var output = ""; // The base 64 output
+    var temp_binary; // Used to ensure the binary numbers have 8 bits
+    var index; // Loop variable, for looping through input
+    for (index = 0; index < input.length; index++) {
+      // Turn the next character of input into astring of 8-bit binary
+      temp_binary = input.charCodeAt(index).toString(2);
+      while (temp_binary.length < 8) {
+        temp_binary = "0" + temp_binary;
+      }
+      // Stick this string on the end of the previous 8-bit binary strings to
+      // get one big concatenated binary representation
+      input_binary = input_binary + temp_binary;
+      // Remove all 6-bit sequences from the start of the concatenated binary
+      // string, convert them to a base 64 character and append to output.
+      // Doing this here prevents input_binary from getting massive
+      while (input_binary.length >= 6) {
+        output = output + swaps[parseInt(input_binary.substring(0, 6), 2)];
+        input_binary = input_binary.substring(6);
+      }
     }
-    output = output + this._keyStr.charAt(enc1) + this._keyStr.charAt(enc2) + this._keyStr.charAt(enc3) + this._keyStr.charAt(enc4);
+    // Handle any necessary padding
+    if (input_binary.length == 4) {
+      temp_binary = input_binary + "00";
+      output = output + swaps[parseInt(temp_binary, 2)];
+      output = output + "=";
+    }
+    if (input_binary.length == 2) {
+      temp_binary = input_binary + "0000";
+      output = output + swaps[parseInt(temp_binary, 2)];
+      output = output + "==";
+    }
+    // Output now contains the input in base 64
+    return output;
+  },
+  
+  decode : function(input) {
+    // Takes a base 64 encoded string "input", strips any "=" or "==" padding
+    // off it and converts its base 64 numerals into regular integers (using a
+    // string as a lookup table). These are then written out as 6-bit binary
+    // numbers and concatenated together. The result is split into 8-bit
+    // sequences and these are converted to string characters, which are
+    // concatenated and output.
+    input = input.replace("=", ""); // Padding characters are redundant
+    // The index/character relationship in the following string acts as a
+    // lookup table to convert from base 64 numerals to Javascript integers
+    var swaps = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    var output_binary = "";
+    var output = "";
+    var temp_bin = "";
+    var index;
+    for (index = 0; index < input.length; index++) {
+      temp_bin = swaps.indexOf(input.charAt(index)).toString(2);
+      while (temp_bin.length < 6) {
+        // Add significant zeroes
+        temp_bin = "0" + temp_bin;
+      }
+      while (temp_bin.length > 6) {
+        // Remove significant bits
+        temp_bin = temp_bin.substring(1);
+      }
+      output_binary = output_binary + temp_bin;
+      while (output_binary.length >= 8) {
+        output = output + String.fromCharCode(parseInt(output_binary.substring(0, 8), 2));
+        output_binary = output_binary.substring(8);
+      }
+    }
+    return output;
   }
-  return output;
+
 };
 
-// public method for decoding
-base64.decode = function(input) {
-  var output = "";
-  var chr1, chr2, chr3;
-  var enc1, enc2, enc3, enc4;
-  var i = 0;
-  
-  input = input.replace(/[^A-Za-z0-9\+\/\=]/g, "");
-  
-  while (i < input.length) {
-    
-    enc1 = this._keyStr.indexOf(input.charAt(i++));
-    enc2 = this._keyStr.indexOf(input.charAt(i++));
-    enc3 = this._keyStr.indexOf(input.charAt(i++));
-    enc4 = this._keyStr.indexOf(input.charAt(i++));
-    
-    chr1 = (enc1 << 2) | (enc2 >> 4);
-    chr2 = ((enc2 & 15) << 4) | (enc3 >> 2);
-    chr3 = ((enc3 & 3) << 6) | enc4;
-    
-    output = output + String.fromCharCode(chr1);
-    if (enc3 != 64) {
-      output = output + String.fromCharCode(chr2);
-    }
-    if (enc4 != 64) {
-      output = output + String.fromCharCode(chr3);
-    }
-  }
-  output = this._utf8_decode(output);
-  return output;
-  
-};
-
-// private method for UTF-8 encoding
-base64._utf8_encode = function(string) {
-  string = string.replace(/\r\n/g, "\n");
-  var utftext = "";
-  for ( var n = 0; n < string.length; n++) {
-    var c = string.charCodeAt(n);
-    if (c < 128) {
-      utftext += String.fromCharCode(c);
-    } else if ((c > 127) && (c < 2048)) {
-      utftext += String.fromCharCode((c >> 6) | 192);
-      utftext += String.fromCharCode((c & 63) | 128);
-    } else {
-      utftext += String.fromCharCode((c >> 12) | 224);
-      utftext += String.fromCharCode(((c >> 6) & 63) | 128);
-      utftext += String.fromCharCode((c & 63) | 128);
-    }
-  }
-  return utftext;
-};
-
-// private method for UTF-8 decoding
-base64._utf8_decode = function(utftext) {
-  var string = "";
-  var i = 0;
-  var c = c1 = c2 = 0;
-  while (i < utftext.length) {
-    c = utftext.charCodeAt(i);
-    if (c < 128) {
-      string += String.fromCharCode(c);
-      i++;
-    } else if ((c > 191) && (c < 224)) {
-      c2 = utftext.charCodeAt(i + 1);
-      string += String.fromCharCode(((c & 31) << 6) | (c2 & 63));
-      i += 2;
-    } else {
-      c2 = utftext.charCodeAt(i + 1);
-      c3 = utftext.charCodeAt(i + 2);
-      string += String.fromCharCode(((c & 15) << 12) | ((c2 & 63) << 6) | (c3 & 63));
-      i += 3;
-    }
-  }
-  return string;
-};
-
-libUtil.base64 = base64;
+libUtil.base64 = Base64;

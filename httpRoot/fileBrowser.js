@@ -1,5 +1,5 @@
 var fileBrowser = document.getElementById("fileBrowser");
-currentDir = "/scripts/httpSrv/httpRoot/";
+currentDir = "./";
 
 function refreshFileBrowser(data) {
   var fileBrowser = document.getElementById("fileBrowser");
@@ -83,11 +83,11 @@ function updatePlayListContent(data) {
     } else {
       html += '<tr class="isnotplaying">';
     }
-    html += ' <td onclick="doAction(\'play\', {\'media\' : ' + k + ' });"><img src="images/media-playback-start.png"/></td>';
+    html += ' <td><button class="play"  onclick="doAction(\'play\' , {\'media\' : ' + k + ' });" /></td>';
     html += ' <td>' + ((media.url) ? media.url : '') + '</td>';
     html += ' <td>' + ((media.duration) ? Math.round(media.duration / 1000) : '?') + 's<br />' + humanReadableByteCount(media.size) + '</td>';
     html += ' <td>' + ((media.position) ? Math.round(media.position / 1000) : '') /* media.loaded media.looping */+ '</td>';
-    html += ' <td onclick="doAction(\'delMedia\', {\'media\' : ' + k + ' });"><img src="images/delete.png"/></td>';
+    html += ' <td><button class="delMedia"  onclick="doAction(\'delMedia\' , {\'media\' : ' + k + ' });" /></td>';
     html += '</tr>';
   }
   playlist.innerHTML += html;

@@ -28,6 +28,11 @@ try {
     // print("Session:" + uuid + ", " + session['last_use_date']);
     return session;
   }
+  sync(initSession);
+  
+  function base64UrlProtect(input) {
+    return String(input).replace(new RegExp('+', 'g'), '%2B').replace(new RegExp('/', 'g'), '%2F').replace(new RegExp('=', 'g'), '%3D');
+  }
   
   function getMediaIndex(medias, media) {
     for ( var k in medias) {
@@ -60,29 +65,6 @@ try {
     }
   }
   
-  function printList(medias) {
-    http.print('<table id="playlist">');
-    http.print('<tr><td>play</td><td>tag</td><td>url</td><td>duration</td><td>position</td><td>loaded</td><td>looping</td></tr>');
-    /*
-     * for ( var k in session.medias) { var mi = session.medias[k]; http.print('<tr class="' + ((mi.isplaying) ? 'isplaying' : 'isnotplaying') + '">'); http.print(' <td><a
-     * href="player.js?action=play&media=' + k + '"><img src="images/media-playback-start.png"/></a></td>'); http.print(' <td>' + k + '</td>'); http.print(' <td>' + ((mi.url) ? mi.url : '') + '</td>');
-     * http.print(' <td>' + ((mi.duration) ? Math.round(mi.duration / 1000) : '') + '</td>'); http.print(' <td>' + ((mi.position) ? Math.round(mi.position / 1000) : '') + '</td>'); http.print('
-     * <td>' + ((mi.loaded) ? mi.loaded : '') + '</td>'); http.print(' <td>' + ((mi.looping) ? mi.looping : '') + '</td>'); http.print('</tr>'); }
-     */
-    http.print('</table>');
-  }
-  
-  function fileBrowser() {
-    if (!session.currentDir) {
-      session.currentDir = "./";
-    }
-    http.print('<table id="fileBrowser">');
-    http.print('</table>');
-    http.print('<script type="text/javascript">');
-    http.print(readFile('/sdcard/sl4a/scripts/httpSrv/httpRoot/fileBrowser.js'));
-    http.print('</script>');
-  }
-  
   function manageActions(session) {
     var mapAction = {
       'addMedia' : actionAddMedia,
@@ -112,7 +94,7 @@ try {
   
   function actionAddMedia(session) {
     if (http.request.vars.media != '') {
-      var fileInfo = libUtil.file.getFileInfo('/sdcard/sl4a/' + http.request.vars.media);
+      var fileInfo = libUtil.file.getFileInfo(libUtil.httpSrvDir + "httpRoot/" + http.request.vars.media);
       if (fileInfo && fileInfo.isFile) {
         // print('add file: '+'' + JSON.stringify(fileInfo, null, 4));
         var url = 'file://' + fileInfo.absolutePath;
@@ -175,9 +157,25 @@ try {
   }
   
   function actionPause(session) {
-    pauseAll(false);
-    session.play = false;
-    return "pause";
+    if (session.play) {
+      pauseAll(false);
+      session.play = false;
+      return "pause";
+    } else {
+      if (session.medias[session.currentMedia]) {
+        var media = session.medias[session.currentMedia];
+        var mediaInfo = droid.mediaPlayInfo(media.url);
+        if (mediaInfo.loaded) {
+          var ret = droid.mediaPlayStart(media.url);
+          session.play = true;
+          return "play continue";
+        } else {
+          return actionPlay(session);
+        }
+      } else {
+        return actionPlay(session);
+      }
+    }
   }
   
   function actionBwd(session) {
@@ -253,12 +251,17 @@ try {
   }
   
   libUtil = {};
-  load("/sdcard/sl4a/scripts/httpSrv/libUtil/file.js");
-  if (libUtil.file.getFileInfo("/sdcard/com.googlecode.rhinoforandroid/extras/rhino/android.js")) {
+  if (new java.io.File('/sdcard/com.googlecode.rhinoforandroid/extras/rhino/android.js').exists()) { // in android system
+    libUtil.httpSrvDir = '/sdcard/sl4a/scripts/httpSrv/';
     load("/sdcard/com.googlecode.rhinoforandroid/extras/rhino/android.js");
   } else {
+    libUtil.httpSrvDir = '../';
     load("../libUtil/android.js");
   }
+  
+  load(libUtil.httpSrvDir + "libUtil/file.js");
+  load(libUtil.httpSrvDir + "libUtil/base64.js");
+  
   droid = new Android();
   
   var session = {};
@@ -280,28 +283,38 @@ try {
     http.addHeader("Content-Type", "text/html ; charset=UTF-8");
     http.print('<!DOCTYPE html><html><head>');
     http.print('<title>Audio player</title>');
-    http.print('<link rel="stylesheet" type="text/css" href="conso.css" />');
+    // http.print('<link rel="stylesheet" type="text/css" href="player.css" />');
+    http.print('<style type="text/css">');
+    http.print(readFile(libUtil.httpSrvDir + '/httpRoot/player.css'));
+    http.print('</style>');
+    // http.print('<style type="text/css">' + "\n");
+    // http.print('#prev { background-image: url(data:image/png;base64,' + libUtil.base64.encode(readFile(libUtil.httpSrvDir + '/httpRoot/images/media-skip-backward.png')) + '); }' + "\n");
+    // http.print('</style>');
     http.print('</head><body>');
     http.print('<h2>Audio player</h2>');
     http.print('<div id="controls">');
-    http.print('<img src="images/media-skip-backward.png" onclick="doAction(\'prev\', {});" />');
-    http.print('<img src="images/media-seek-backward.png" onclick="doAction(\'bwd\', {});" />');
-    http.print('<img src="images/media-playback-start.png" onclick="doAction(\'play\', {});" />');
-    http.print('<img src="images/media-playback-pause.png" onclick="doAction(\'pause\', {});" />');
-    http.print('<img src="images/media-seek-forward.png" onclick="doAction(\'fwd\', {});" />');
-    http.print('<img src="images/media-skip-forward.png" onclick="doAction(\'next\', {});" />');
+    http.print('<button id="prev"  onclick="doAction(\'prev\' , {});" />');
+    http.print('<button id="bwd"   onclick="doAction(\'bwd\'  , {});" />');
+    http.print('<button id="play"  onclick="doAction(\'play\' , {});" />');
+    http.print('<button id="pause" onclick="doAction(\'pause\', {});" />');
+    http.print('<button id="fwd"   onclick="doAction(\'fwd\'  , {});" />');
+    http.print('<button id="next"  onclick="doAction(\'next\' , {});" />');
     http.print('</div>');
     http.print('<br />');
-    printList(session.medias);
+    http.print('<table id="playlist">');
+    http.print('<tr><td>play</td><td>tag</td><td>url</td><td>duration</td><td>position</td><td>loaded</td><td>looping</td></tr>');
+    http.print('</table>');
     
     http.print('<br />');
     http.print('<div id="info">info</div>');
     http.print('<br />');
-    
-    fileBrowser();
+    http.print('<table id="fileBrowser">');
+    http.print('</table>');
+    http.print('<script type="text/javascript">');
+    http.print(readFile(libUtil.httpSrvDir + '/httpRoot/fileBrowser.js'));
+    http.print('</script>');
     http.print('</body></html>');
   }
-  
 } catch (e) {
   print(e.message + "\r\n in file " + e.sourceName + " at line " + e.lineNumber + "\r\n" + e.lineSource);
   http.response.code = "500";

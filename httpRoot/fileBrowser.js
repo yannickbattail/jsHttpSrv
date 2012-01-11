@@ -5,9 +5,9 @@ function refreshFileBrowser(data) {
   var fileBrowser = document.getElementById("fileBrowser");
   fileBrowser.innerHTML = "";
   try {
-    var files = eval('(' + data + ')');
+    var files = eval(data);
   } catch (e) {
-    alert(e);
+    // alert(e);
   }
   fileBrowser.innerHTML += '<tr onclick="changeDir(\'..\');" ><td class="dir">[parent directory]</td><td></td></tr>';
   for ( var fk in files) {
@@ -70,9 +70,9 @@ function updatePlayListContent(data) {
   var playlist = document.getElementById("playlist");
   playlist.innerHTML = "";
   try {
-    var medias = eval('(' + data + ')');
+    var medias = eval(data);
   } catch (e) {
-    alert(e);
+    // alert(e);
   }
   var html = '<tr><th>play</th><th>url</th><th>duration</th><th>position</th><th>del</th></tr>';
   for ( var k in medias) {
@@ -149,4 +149,4 @@ function doAction(action, params) {
   return null;
 }
 
-refreshPlayList();
+setTimeout(refreshPlayList, 500);

@@ -29,10 +29,6 @@ try {
     return session;
   }
   
-  function escapeHtml(string) {
-    return String(string).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-  }
-  
   function getMediaIndex(medias, media) {
     for ( var k in medias) {
       if (medias[k].url == media) {
@@ -102,7 +98,13 @@ try {
     
     if (mapAction[http.request.vars.action]) {
       var fct = mapAction[http.request.vars.action];
-      fct.call(fct, session);
+      var ret = fct.call(fct, session);
+      if (ret) {
+        http.print(ret);
+        // print(ret);
+      } else {
+        http.print('.');
+      }
     } else {
       print('unknown action ' + http.request.vars.action);
     }
@@ -127,15 +129,15 @@ try {
               'looping' : mediaInfo.looping,
               'isplaying' : mediaInfo.isplaying
             });
-            // droid.mediaPlayClose(url);
+            return 'added: ' + url;
           } else {
-            http.print('audio file not readable: ' + http.request.vars.media);
+            return 'audio file not readable: ' + http.request.vars.media;
           }
         } else {
-          http.print('file already in playlist: ' + http.request.vars.media);
+          return 'file already in playlist: ' + http.request.vars.media;
         }
       } else {
-        http.print('file not found: ' + http.request.vars.media);
+        return 'file not found: ' + http.request.vars.media;
       }
     }
   }
@@ -143,6 +145,9 @@ try {
   function actionDelMedia(session) {
     if (http.request.vars.media != '') {
       session.medias.splice(1 * http.request.vars.media, 1);
+      return 'deleted from playlist: ' + http.request.vars.media;
+    } else {
+      return 'not found, not deleted.';
     }
   }
   
@@ -152,8 +157,7 @@ try {
       if (session.medias[1 * http.request.vars.media]) {
         session.currentMedia = http.request.vars.media;
       } else {
-        http.print("no element " + http.request.vars.media + " in playlist.");
-        return;
+        return "no element " + http.request.vars.media + " in playlist.";
       }
     }
     if (!session.medias[session.currentMedia]) {
@@ -163,26 +167,45 @@ try {
       var url = session.medias[session.currentMedia].url;
       var ret = droid.mediaPlay(url, url);
       session.play = true;
-      print("playstart: " + http.request.vars.media + " => " + ret);
+      return 'play ' + url;
+      print("playstart: " + url + " => " + ret);
+    } else {
+      return 'not current element in playlist';
     }
   }
   
   function actionPause(session) {
     pauseAll(false);
     session.play = false;
-    print("pause");
+    return "pause";
   }
   
   function actionBwd(session) {
-    var p = session.medias[mediaPlayed].position - (5 * 1000);
-    var ret = droid.mediaPlaySeek(p, mediaPlayed);
-    print("Seek: " + p + " => " + ret);
+    var media = session.medias[session.currentMedia];
+    if (media.isPlaying) {
+      var p = media.position - (5 * 1000); // - 5s
+      if (p < 0) {
+        p = 0;
+      }
+      droid.mediaPlaySeek(p, media.url);
+      return 'Move 5s backward.';
+    } else {
+      return 'nothing curently playing.';
+    }
   }
   
   function actionFwd(session) {
-    var p = session.medias[mediaPlayed].position + (5 * 1000);
-    var ret = droid.mediaPlaySeek(p, mediaPlayed);
-    print("Seek: " + p + " => " + ret);
+    var media = session.medias[session.currentMedia];
+    if (media.isPlaying) {
+      var p = media.position + (5 * 1000); // + 5s
+      if (p >= media.duration) {
+        p = media.duration - 500;
+      }
+      droid.mediaPlaySeek(p, media.url);
+      return 'Move 5s forward.';
+    } else {
+      return 'nothing curently playing.';
+    }
   }
   
   function actionPrev(session) {
@@ -193,11 +216,7 @@ try {
     } else if (session.currentMedia < 0) {
       session.currentMedia = session.medias.length - 1;
     }
-    if (session.medias[session.currentMedia]) {
-      var url = session.medias[session.currentMedia].url;
-      var ret = droid.mediaPlay(url, url);
-      print("playstart: " + http.request.vars.media + " => " + ret);
-    }
+    return actionPlay(session);
   }
   
   function actionNext(session) {
@@ -208,11 +227,7 @@ try {
     } else if (session.currentMedia < 0) {
       session.currentMedia = session.medias.length - 1;
     }
-    if (session.medias[session.currentMedia]) {
-      var url = session.medias[session.currentMedia].url;
-      var ret = droid.mediaPlay(url, url);
-      print("playstart: " + http.request.vars.media + " => " + ret);
-    }
+    return actionPlay(session);
   }
   
   function actionGetPlayList(session) {
@@ -234,7 +249,7 @@ try {
         media.isplaying = false;
       }
     }
-    http.print('' + JSON.stringify(session.medias, null, 4));
+    return '' + JSON.stringify(session.medias, null, 4);
   }
   
   libUtil = {};
@@ -258,9 +273,10 @@ try {
   if (session.play == undefined) {
     session.play = false;
   }
-  manageActions(session);
   
-  if (!http.request.vars.action) {
+  if (http.request.vars.action) {
+    manageActions(session);
+  } else {
     http.addHeader("Content-Type", "text/html ; charset=UTF-8");
     http.print('<!DOCTYPE html><html><head>');
     http.print('<title>Audio player</title>');

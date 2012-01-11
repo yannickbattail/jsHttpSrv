@@ -3,8 +3,15 @@ importPackage(java.net);
 importPackage(java.util);
 importPackage(java.lang);
 
-// rootDir = "/";
-rootDir = "./";
+libUtil = {};
+
+if (new java.io.File('/sdcard/com.googlecode.rhinoforandroid/extras/rhino/android.js').exists()) { // in android system
+  libUtil.httpSrvDir = '/sdcard/sl4a/scripts/httpSrv/';
+} else {
+  libUtil.httpSrvDir = '../';;
+}
+
+libUtil.httpRoot = libUtil.httpSrvDir + "httpRoot/";
 
 lastSocket = null;
 sessions = {};
@@ -91,6 +98,7 @@ function httpParser(sock) {
   this.sessions = {};
   
   this.handleSocket = function() {
+
     // print("processRequest");
     // Get a reference to the socket's input and output streams.
     var inStream = new InputStreamReader(this.socket.getInputStream());
@@ -223,7 +231,7 @@ function httpParser(sock) {
   }
   
   function handleResponseBasic(request, response) {
-    var file = new File(rootDir + "/" + request.url);
+    var file = new File(libUtil.httpRoot + "/" + request.url);
     if (file.exists() && file.isFile()) {
       if (request.url.endsWith('.js')) {
         response.headers["Content-Type"] = "text/plain";
@@ -289,7 +297,7 @@ function httpParser(sock) {
   }
   
   function handleResponse(request, response) {
-    var file = new File(rootDir + "/" + request.url);
+    var file = new File(libUtil.httpRoot + "/" + request.url);
     if (file.exists() && file.isFile()) {
       if (request.url.endsWith('.js')) {
         response.headers["Content-Type"] = "text/plain";

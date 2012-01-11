@@ -37,6 +37,25 @@ function updateFileBrowser() {
   }
 }
 
+function humanReadableTime(miliSeconds, displayMs) {
+  if (!miliSeconds) {
+    miliSeconds = 0;
+  }
+  var ms = miliSeconds % 1000;
+  var sec = Math.round(miliSeconds / 1000) % (60 * 60);
+  var min = Math.round(miliSeconds / (1000 * 60)) % 60;
+  var hour = Math.round(miliSeconds / (1000 * 60 * 60));
+  var ret = '';
+  if (hour) {
+    ret += hour + ':';
+  }
+  ret += min + ':' + sec;
+  if (displayMs) {
+    ret += ':' + ms;
+  }
+  return ret;
+}
+
 function humanReadableByteCount(bytes, si) {
   var unit = si ? 1000 : 1024;
   if (bytes < unit) return bytes + " B";
@@ -85,8 +104,8 @@ function updatePlayListContent(data) {
     }
     html += ' <td><button class="play"  onclick="doAction(\'play\' , {\'media\' : ' + k + ' });" /></td>';
     html += ' <td>' + ((media.url) ? media.url : '') + '</td>';
-    html += ' <td>' + ((media.duration) ? Math.round(media.duration / 1000) : '?') + 's<br />' + humanReadableByteCount(media.size) + '</td>';
-    html += ' <td>' + ((media.position) ? Math.round(media.position / 1000) : '') /* media.loaded media.looping */+ '</td>';
+    html += ' <td>' + (media.duration ? humanReadableTime(media.duration, false) : '') + '<br />' + humanReadableByteCount(media.size) + '</td>';
+    html += ' <td>' + (media.position ? humanReadableTime(media.position, false) : '') /* media.loaded media.looping */+ '</td>';
     html += ' <td><button class="delMedia"  onclick="doAction(\'delMedia\' , {\'media\' : ' + k + ' });" /></td>';
     html += '</tr>';
   }
@@ -103,11 +122,11 @@ function updatePlayList() {
     } else {
       alert("no responseText");
     }
-    setTimeout(refreshPlayList, 3000);
+    setTimeout(refreshPlayList, 2000);
   } else if (this.readyState == 4 && this.status != 200) {
     // fetched the wrong page or network error...
     alert("net error");
-    setTimeout(refreshPlayList, 3000);
+    setTimeout(refreshPlayList, 2000);
   }
 }
 
@@ -149,4 +168,4 @@ function doAction(action, params) {
   return null;
 }
 
-setTimeout(refreshPlayList, 500);
+refreshPlayList();

@@ -60,7 +60,26 @@ try {
       var tag = playList[k];
       var mediaInfo = droid.mediaPlayInfo(tag);
       if (mediaInfo.isplaying) {
-        return true;
+        return mediaInfo;
+      }
+    }
+    return [];
+  }
+  
+  function refreshMedias(session) {
+    for ( var k in session.medias) {
+      var media = session.medias[k];
+      var mediaInfo = droid.mediaPlayInfo(media.url);
+      if (mediaInfo) {
+        media.position = mediaInfo.position;
+        media.loaded = mediaInfo.loaded;
+        media.looping = mediaInfo.looping;
+        media.isplaying = mediaInfo.isplaying;
+      } else {
+        media.position = 0;
+        media.loaded = false;
+        media.looping = false;
+        media.isplaying = false;
       }
     }
   }
@@ -77,7 +96,7 @@ try {
       'next' : actionNext,
       'getPlayList' : actionGetPlayList
     };
-    
+    refreshMedias(session);
     if (mapAction[http.request.vars.action]) {
       var fct = mapAction[http.request.vars.action];
       var ret = fct.call(fct, session);
@@ -94,7 +113,7 @@ try {
   
   function actionAddMedia(session) {
     if (http.request.vars.media != '') {
-      var fileInfo = libUtil.file.getFileInfo(libUtil.httpSrvDir + "httpRoot/" + http.request.vars.media);
+      var fileInfo = libUtil.file.getFileInfo(libUtil.httpRoot + http.request.vars.media);
       if (fileInfo && fileInfo.isFile) {
         // print('add file: '+'' + JSON.stringify(fileInfo, null, 4));
         var url = 'file://' + fileInfo.absolutePath;
@@ -164,8 +183,7 @@ try {
     } else {
       if (session.medias[session.currentMedia]) {
         var media = session.medias[session.currentMedia];
-        var mediaInfo = droid.mediaPlayInfo(media.url);
-        if (mediaInfo.loaded) {
+        if (media.loaded) {
           var ret = droid.mediaPlayStart(media.url);
           session.play = true;
           return "play continue";
@@ -179,8 +197,8 @@ try {
   }
   
   function actionBwd(session) {
-    var media = session.medias[session.currentMedia];
-    if (media.isPlaying) {
+    var media = isPlaying();
+    if (media.isplaying) {
       var p = media.position - (5 * 1000); // - 5s
       if (p < 0) {
         p = 0;
@@ -193,8 +211,8 @@ try {
   }
   
   function actionFwd(session) {
-    var media = session.medias[session.currentMedia];
-    if (media.isPlaying) {
+    var media = isPlaying();
+    if (media.isplaying) {
       var p = media.position + (5 * 1000); // + 5s
       if (p >= media.duration) {
         p = media.duration - 500;
@@ -232,25 +250,10 @@ try {
     if (session.play && !isPlaying()) {
       actionNext(session);
     }
-    for ( var k in session.medias) {
-      var media = session.medias[k];
-      var mediaInfo = droid.mediaPlayInfo(media.url);
-      if (mediaInfo) {
-        media.position = mediaInfo.position;
-        media.loaded = mediaInfo.loaded;
-        media.looping = mediaInfo.looping;
-        media.isplaying = mediaInfo.isplaying;
-      } else {
-        media.position = 0;
-        media.loaded = false;
-        media.looping = false;
-        media.isplaying = false;
-      }
-    }
+    refreshMedias(session);
     return '' + JSON.stringify(session.medias, null, 4);
   }
   
-  libUtil = {};
   if (new java.io.File('/sdcard/com.googlecode.rhinoforandroid/extras/rhino/android.js').exists()) { // in android system
     libUtil.httpSrvDir = '/sdcard/sl4a/scripts/httpSrv/';
     load("/sdcard/com.googlecode.rhinoforandroid/extras/rhino/android.js");
@@ -285,10 +288,10 @@ try {
     http.print('<title>Audio player</title>');
     // http.print('<link rel="stylesheet" type="text/css" href="player.css" />');
     http.print('<style type="text/css">');
-    http.print(readFile(libUtil.httpSrvDir + '/httpRoot/player.css'));
+    http.print(readFile(libUtil.httpRoot + 'player.css'));
     http.print('</style>');
     // http.print('<style type="text/css">' + "\n");
-    // http.print('#prev { background-image: url(data:image/png;base64,' + libUtil.base64.encode(readFile(libUtil.httpSrvDir + '/httpRoot/images/media-skip-backward.png')) + '); }' + "\n");
+    // http.print('#prev { background-image: url(data:image/png;base64,' + libUtil.base64.encode(readFile(libUtil.httpRoot + 'images/media-skip-backward.png')) + '); }' + "\n");
     // http.print('</style>');
     http.print('</head><body>');
     http.print('<h2>Audio player</h2>');
@@ -311,7 +314,7 @@ try {
     http.print('<table id="fileBrowser">');
     http.print('</table>');
     http.print('<script type="text/javascript">');
-    http.print(readFile(libUtil.httpSrvDir + '/httpRoot/fileBrowser.js'));
+    http.print(readFile(libUtil.httpRoot + 'fileBrowser.js'));
     http.print('</script>');
     http.print('</body></html>');
   }

@@ -92,4 +92,6 @@ Base64 = {
 
 };
 
-libUtil.base64 = Base64;
+if (!libUtil.base64) {
+  libUtil.base64 = Base64;
+}

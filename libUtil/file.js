@@ -1,4 +1,3 @@
-
 var file = function() {
   this.name = "";
   this.absolutePath = "";
@@ -78,4 +77,6 @@ file.getFileInfo = function(dirPath) {
   return fileDetail;
 };
 
-libUtil.file = file;
+if (!libUtil.file) {
+  libUtil.file = file;
+}

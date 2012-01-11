@@ -29,4 +29,6 @@ xmlEntities.decode = function(input) {
   return input;
 };
 
-libUtil.xmlEntities = xmlEntities;
+if (!libUtil.xmlEntities) {
+  libUtil.base64 = xmlEntities;
+}

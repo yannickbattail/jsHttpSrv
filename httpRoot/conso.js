@@ -1,14 +1,12 @@
 //load("/sdcard/com.googlecode.rhinoforandroid/extras/rhino/json2.js");
 
-
-libUtil = {};
-load("../libUtil/file.js");
+load(libUtil.httpSrvDir + "libUtil/file.js");
 
 http.addHeader("Content-Type", "text/html ; charset=UTF-8");
 http.print('<!DOCTYPE html><html><head><title>conso</title><link rel="stylesheet" type="text/css" href="conso.css" /></head><body>');
 function loadTable() {
     try {
-        var jsonStr = libUtil.file.readFile('./conso.json');
+        var jsonStr = libUtil.file.readFile(libUtil.httpRoot + './conso.json');
         if (jsonStr == '') {
             return {};
         }
@@ -25,7 +23,7 @@ function saveTable(table) {
     try {
         var jsonStr = '' + JSON.stringify(table, null, 4);
         http.print(jsonStr);
-        libUtil.file.writeFile('./conso.json', jsonStr);
+        libUtil.file.writeFile(libUtil.httpRoot + './conso.json', jsonStr);
     } catch (e) {
         http.print(e.message + "\r\n in file " + e.sourceName + " at line " + e.lineNumber + "\r\n" + e.lineSource);
         print(e.message + "\r\n in file " + e.sourceName + " at line " + e.lineNumber + "\r\n" + e.lineSource);

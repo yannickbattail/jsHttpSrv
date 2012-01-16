@@ -1,4 +1,4 @@
-// load("/sdcard/com.googlecode.rhinoforandroid/extras/rhino/json2.js");
+load("/sdcard/com.googlecode.rhinoforandroid/extras/rhino/json2.js");
 
 load(libUtil.httpSrvDir + "libUtil/file.js");
 
